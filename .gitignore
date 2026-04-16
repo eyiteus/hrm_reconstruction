@@ -5,3 +5,5 @@
 *.gsheet
 *.gslides
 Github_Repo.ipynb
+*.pyc
+__init__.cpython-312.pyc
