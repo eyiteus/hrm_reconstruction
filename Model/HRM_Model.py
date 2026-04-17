@@ -18,24 +18,38 @@ class HRM(nn.Module):
 
 
   def encode(self, x):
-      return self.encoder(x)
+    return self.encoder(x)
+
 
   def step(self, z_H, z_L, x_embed):
-    """One full segment — T low passes per each othe N high passes.
-    Input states should already be detached by the caller."""
     with torch.no_grad():
-      #Do N-1 High Passes
-      for n in range(self.N - 1):
-        for t in range(self.T):
-          z_L = self.low_level(x_embed, z_H, z_L)
-        z_H = self.high_level(x_embed, z_H, z_L)  # grad flows only here
-
-      #Do the final High pass. Only take gradient at the end
-      for t in range(self.T - 1):
+      for i in range(self.N * self.T - 1):
         z_L = self.low_level(x_embed, z_H, z_L)
-    z_L = self.low_level(x_embed, z_H, z_L)     # last L — grad flows
-    z_H = self.high_level(x_embed, z_H, z_L)  # grad flows only here
-    return z_H, z_L
+        if (i + 1) % self.T == 0:
+          z_H = self.high_level(x_embed, z_H, z_L)
+
+    # single grad step
+    z_L = self.low_level(x_embed, z_H, z_L)
+    z_H = self.high_level(x_embed, z_H, z_L)
+    logits = self.head(z_H)
+    return z_H, z_L, logits
+
+  # def step(self, z_H, z_L, x_embed):
+  #   """One full segment — T low passes per each othe N high passes.
+  #   Input states should already be detached by the caller."""
+  #   with torch.no_grad():
+  #     #Do N-1 High Passes
+  #     for n in range(self.N - 1):
+  #       for t in range(self.T):
+  #         z_L = self.low_level(x_embed, z_H, z_L)
+  #       z_H = self.high_level(x_embed, z_H, z_L)  # grad flows only here
+
+  #     #Do the final High pass. Only take gradient at the end
+  #     for t in range(self.T - 1):
+  #       z_L = self.low_level(x_embed, z_H, z_L)
+  #   z_L = self.low_level(x_embed, z_H, z_L)     # last L — grad flows
+  #   z_H = self.high_level(x_embed, z_H, z_L)  # grad flows only here
+  #   return z_H, z_L
 
   def predict(self, x):
     if len(x.shape) == 1:
@@ -53,8 +67,8 @@ class HRM(nn.Module):
     z_H = torch.zeros(B, L, d, device=x.device)
     z_L = torch.zeros(B, L, d, device=x.device)
 
-    for m in range(self.M):
-      z_H, z_L = self.step(z_H, z_L.detach(), x_embed)
+    for _ in range(self.M - 1):
+      z_H, z_L, _ = self.step(z_H.detach(), z_L.detach(), x_embed)
+    _, _, logits = self.step(z_H.detach(), z_L.detach(), x_embed)
 
-
-    return self.head(z_H)
+    return logits
