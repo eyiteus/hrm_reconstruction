@@ -3,18 +3,18 @@
 ## To-do list 
 
 - [ ] HRM Architecture
-  - [ x ] Input block
-  - [ x ] L-Module
-  - [ x ] H-Module
-  - [ x ] Output block
-  - [ x ] Forward pass
+  - [x] Input block
+  - [x] L-Module
+  - [x] H-Module
+  - [x] Output block
+  - [x] Forward pass
   - [ ] Training
   - [ ] ACT
 - [ ] SOTA LLM
   - [ ] RNN
   - [ ] CoT Transformer
 - [ ] Dataset Preparation
-  - [ x ] Dataloader
+  - [x] Dataloader
   - [ ] Instructions on how to use
      
 - [ ] Deliverables
