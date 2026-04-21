@@ -8,4 +8,4 @@ Github_Repo.ipynb
 *.pyc
 *.DS_Store
 __init__.cpython-312.pyc
-code/Model/checkpoints/hrm_epoch*
+code/Model/checkpoints
