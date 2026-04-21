@@ -59,7 +59,7 @@ class HRM(nn.Module):
 
         # final gradient-carrying updates
         z_L = self.low_level(x_embed, z_H, z_L)
-        z_H = self.high_level(x_embed, z_H, z_L)
+        z_H = self.high_level(z_H, z_L)
         logits = self.head(z_H)
 
         return z_H, z_L, logits

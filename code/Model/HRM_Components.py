@@ -141,8 +141,8 @@ class HighLevel(nn.Module):
             for _ in range(n_layers)
         ])
 
-    def forward(self, x_embed: torch.Tensor, z_H: torch.Tensor, z_L: torch.Tensor) -> torch.Tensor:
-        h = x_embed + z_H + z_L
+    def forward(self, z_H: torch.Tensor, z_L: torch.Tensor) -> torch.Tensor:
+        h = z_H + z_L
         for layer in self.layers:
             h = layer(h)
         return h
