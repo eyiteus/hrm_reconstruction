@@ -113,43 +113,6 @@ class GPT2_Baseline(nn.Module):
 
     return logits, loss
 
-  @torch.no_grad()
-  def infer(self, prompt, max_new_tokens: int, temperature: float = 1.0, top_k: int = 50):
-    self.eval()
-    # tokens = self.tokenizer.encode(prompt, return_tensors='pt').to(self.device)
-
-    # Prefill/Initialize KV-Cache
-    N = tokens.size(1)
-    pos = torch.arange(0, N, dtype=torch.long, device=self.device)
-    x = self.transformer.wte(tokens) + self.transformer.wpe(pos)
-    x = self.transformer.drop(x)
-
-    kv_caches = []
-    for layer_block in self.transformer.h:
-      x, cache = layer_block(x, kv_cache=None)
-      kv_caches.append(cache)
-    x = self.transformer.ln_f(x)
-    next_token = self._sample(self.lm_head(x[:, -1, :]), temperature, top_k)
-    tokens = torch.cat([tokens, next_token], dim=1)
-
-    # Decode
-    for _ in range(max_new_tokens - 1):
-      pos  = torch.tensor([tokens.size(1) - 1], dtype=torch.long, device=self.device)
-      x    = self.transformer.wte(next_token) + self.transformer.wpe(pos)
-      x    = self.transformer.drop(x)
-      new_caches = []
-      for layer_block, kv_cache in zip(self.transformer.h, kv_caches):
-        x, cache = layer_block(x, kv_cache=kv_cache)
-        new_caches.append(cache)
-
-      kv_caches = new_caches
-      x = self.transformer.ln_f(x)
-
-      next_token = self._sample(self.lm_head(x[:, -1, :]), temperature, top_k)
-      tokens = torch.cat([tokens, next_token], dim=1)
-
-    return tokens[0].tolist()#self.tokenizer.decode(tokens[0].tolist())
-
   #Top-k sampling with temperature
   def _sample(self, logits, temperature, top_k=None):
     logits = logits / temperature
