@@ -1,150 +1,116 @@
-"""
-Note that this file is mostly copied from code written for 
-a project written in CS 6787 this semester
-"""
 import torch
 import torch.nn as nn
-from torch import dropout, embedding
-from dataclasses import dataclass
 import torch.nn.functional as F
-import sys
 from dataclasses import dataclass
-import math
 
-#Configuration for model hyperparameters
+
 @dataclass
-class BaselineConfig:
-  num_heads: int = 12
-  num_layers: int = 12
-  vocab_size: int = 10
-  embedding_dim: int = 768
-  block_size: int = 256
-  dropout : float = .1
-  weight_decay : float = .1
-  pad_token_id : int = 0
-
-#Configuration fr training hyperparameters
-@dataclass
-class TrainConfig:
-  batch_per_iter : int = 32
-  grad_acc_factor : int = 16
-  warmup_steps : int = 150
-  num_steps_train : int = 3623
-  num_steps_val : int = 32
-  max_lr : float = 3e-4
-  min_lr : float = 3e-5
-  weight_decay : float = .1
-  betas : tuple[float, float] = (.9,.95)
-
-  def get_lr(self, step):
-    # warmup
-    if step < self.warmup_steps:
-        return self.max_lr * step / self.warmup_steps
-    # cosine decay to min_lr
-    progress = (step - self.warmup_steps) / \
-               (self.num_steps_train - self.warmup_steps)
-    cosine   = 0.5 * (1 + math.cos(math.pi * progress))
-    return self.min_lr + cosine * (self.max_lr - self.min_lr)
-
-  def make_optimizer(self, model):
-    return torch.optim.AdamW(
-      model.parameters(),
-      betas=self.betas,
-      lr=self.max_lr,
-      weight_decay=self.weight_decay
-    )
-  
-  def make_scheduler(self, optimizer):
-    return torch.optim.lr_scheduler.LambdaLR(
-      optimizer, lambda step: self.get_lr(step) / self.max_lr
-    )
-  
-  def make_scaler(self):
-    return torch.amp.GradScaler('cuda')
-
+class GPT2Config:
+    num_heads: int = 12
+    num_layers: int = 12
+    vocab_size: int = 10
+    embedding_dim: int = 768
+    block_size: int = 81
+    dropout: float = 0.2
+    pad_token_id: int = 0
 
 
 class GPT2_Baseline(nn.Module):
-  #create a ModuleDict with wte, wpe, hidden layers, weight and bias
-  def __init__(self, config: BaselineConfig, device):
-    super().__init__()
-    self.config = config
-    self.device = device
-    self.transformer = nn.ModuleDict(
-      dict(
-        wte = nn.Embedding(config.vocab_size, config.embedding_dim),
-        wpe = nn.Embedding(config.block_size, config.embedding_dim),
-        h = nn.ModuleList([LayerBlock(config) for _ in range(config.num_layers)]),
-        ln_f = nn.LayerNorm(config.embedding_dim),
-        drop = nn.Dropout(config.dropout)
-      )
-    )
-    #Note that sice our vocab size is very small, we are not doing weight tying
-    self.lm_head = nn.Linear(config.embedding_dim, config.vocab_size, bias=False)
+    def __init__(self, config: GPT2Config):
+        super().__init__()
 
+        self.config = config
 
+        self.transformer = nn.ModuleDict(
+            dict(
+                wte=nn.Embedding(config.vocab_size, config.embedding_dim),
+                wpe=nn.Embedding(config.block_size, config.embedding_dim),
+                h=nn.ModuleList([LayerBlock(config) for _ in range(config.num_layers)]),
+                ln_f=nn.LayerNorm(config.embedding_dim),
+                drop=nn.Dropout(config.dropout),
+            )
+        )
 
-  def forward(self, x, y):
-    _, N = x.size()
-    V = self.config.vocab_size
+        self.lm_head = nn.Linear(
+            config.embedding_dim,
+            config.vocab_size,
+            bias=False,
+        )
 
+    def forward(self, x, y=None):
+        B, N = x.size()
+        V = self.config.vocab_size
 
-    #Get the learned positional embeddings
-    pos = torch.arange(0, N, dtype=torch.long, device=x.device)
-    pos_emb = self.transformer.wpe(pos)
+        pos = torch.arange(0, N, dtype=torch.long, device=x.device)
+        pos_emb = self.transformer.wpe(pos)
 
-    #Push input through the embedding matrix
-    x = self.transformer.wte(x) + pos_emb
-    x = self.transformer.drop(x)
+        x_emb = self.transformer.wte(x) + pos_emb
+        x_emb = self.transformer.drop(x_emb)
 
-    #Push input through the transformer block
-    for layer_block in self.transformer.h:
-      x, _ = layer_block(x)
+        for layer_block in self.transformer.h:
+            x_emb, _ = layer_block(x_emb)
 
-    #Do a final layer norm and push through the head
-    x = self.transformer.ln_f(x)
-    logits = self.lm_head(x)
+        x_emb = self.transformer.ln_f(x_emb)
+        logits = self.lm_head(x_emb)
 
-    #Calculate Loss
-    loss = F.cross_entropy(
-        logits.view(-1, V), 
-        y.view(-1),
-        ignore_index=self.config.pad_token_id)
+        loss = None
 
-    return logits, loss
+        if y is not None:
+            x_flat = x.reshape(-1)
+            y_flat = y.reshape(-1)
 
-  #Top-k sampling with temperature
-  def _sample(self, logits, temperature, top_k=None):
-    logits = logits / temperature
-    if top_k is not None:
-      v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
-      logits[logits < v[:, [-1]]] = float('-inf')
-    return torch.multinomial(torch.softmax(logits, dim=-1), num_samples=1)
+            # same masking as BERT/HRM
+            mask = x_flat != y_flat
+
+            targets = y_flat.clone()
+            targets[~mask] = -100
+
+            loss = F.cross_entropy(
+                logits.reshape(-1, V),
+                targets,
+                ignore_index=-100,
+            )
+
+        return logits, loss
+
+    @torch.no_grad()
+    def predict(self, x):
+        if x.dim() == 1:
+            x = x.unsqueeze(0)
+
+        x = x.long().to(next(self.parameters()).device)
+
+        logits, _ = self.forward(x)
+        pred = logits.argmax(dim=-1)
+
+        return torch.where(x != 0, x, pred)
 
 
 class LayerBlock(nn.Module):
-    def __init__(self, config: BaselineConfig):
+    def __init__(self, config: GPT2Config):
         super().__init__()
+
         self.ln_1 = nn.LayerNorm(config.embedding_dim)
         self.attn = AttentionMultiHeadFused(config)
+
         self.ln_2 = nn.LayerNorm(config.embedding_dim)
         self.mlp = MLP(config)
-    
 
-    def forward(self, x, kv_cache = None):
+    def forward(self, x, kv_cache=None):
         attn_out, new_cache = self.attn(self.ln_1(x), kv_cache)
         x = x + attn_out
-        x = x + self.mlp(self.ln_2(x)) #why do we layer-norm before passing mlp?
+        x = x + self.mlp(self.ln_2(x))
         return x, new_cache
 
 
 class MLP(nn.Module):
-    def __init__(self, config: BaselineConfig):
+    def __init__(self, config: GPT2Config):
         super().__init__()
-        self.c_fc = nn.Linear(config.embedding_dim, 4*config.embedding_dim)
-        self.gelu = nn.GELU(approximate='tanh')
-        self.c_proj = nn.Linear(4*config.embedding_dim, config.embedding_dim)
-        self.drop   = nn.Dropout(config.dropout)
+
+        self.c_fc = nn.Linear(config.embedding_dim, 4 * config.embedding_dim)
+        self.gelu = nn.GELU(approximate="tanh")
+        self.c_proj = nn.Linear(4 * config.embedding_dim, config.embedding_dim)
+        self.drop = nn.Dropout(config.dropout)
 
     def forward(self, x):
         x = self.c_fc(x)
@@ -154,17 +120,17 @@ class MLP(nn.Module):
         return x
 
 
-
-
 class AttentionMultiHeadFused(nn.Module):
-    def __init__(self, config: BaselineConfig):
+    def __init__(self, config: GPT2Config):
         super().__init__()
+
         self.config = config
+
         self.w_qkv = nn.Linear(config.embedding_dim, 3 * config.embedding_dim)
         self.output = nn.Linear(config.embedding_dim, config.embedding_dim)
+
         self.attn_drop = config.dropout
         self.resid_drop = nn.Dropout(config.dropout)
-
 
     def forward(self, x, kv_cache=None):
         B, N, d = x.size()
@@ -172,6 +138,7 @@ class AttentionMultiHeadFused(nn.Module):
         d_eff = d // h
 
         q, k, v = self.w_qkv(x).split(d, dim=2)
+
         q = q.view(B, N, h, d_eff).transpose(1, 2)
         k = k.view(B, N, h, d_eff).transpose(1, 2)
         v = v.view(B, N, h, d_eff).transpose(1, 2)
@@ -184,10 +151,17 @@ class AttentionMultiHeadFused(nn.Module):
         new_cache = (k, v) if not self.training else None
 
         dropout_p = self.attn_drop if self.training else 0.0
-        is_causal = kv_cache is None  # full causal mask during prefill and training
-        attn_out  = F.scaled_dot_product_attention(q, k, v, is_causal=is_causal, dropout_p=dropout_p)
+        is_causal = kv_cache is None
+
+        attn_out = F.scaled_dot_product_attention(
+            q, k, v,
+            is_causal=is_causal,
+            dropout_p=dropout_p,
+        )
 
         attn_out = attn_out.transpose(1, 2).contiguous().view(B, N, d)
+
         out = self.output(attn_out)
         out = self.resid_drop(out)
+
         return out, new_cache
