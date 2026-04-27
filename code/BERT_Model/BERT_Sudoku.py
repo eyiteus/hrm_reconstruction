@@ -6,10 +6,10 @@ from dataclasses import dataclass
 
 @dataclass
 class BaselineConfig:
-    num_heads: int = 12
+    num_heads: int = 8
     num_layers: int = 12
     vocab_size: int = 10
-    embedding_dim: int = 768
+    embedding_dim: int = 512
     block_size: int = 81
     dropout: float = 0.2
     pad_token_id: int = 0

@@ -87,10 +87,18 @@ class HRM(nn.Module):
 
         return self.step(z_H, z_L, x_embed)
 
-    @torch.no_grad()
-    def predict(self, x: torch.Tensor, M=None):
+    
+    def forward(self, x: torch.Tensor, y: torch.Tensor = None, loss_fn=None, M=None):
         if M is None:
             M = self.M
+
+        if x.dim() == 1:
+            x = x.unsqueeze(0)
+
+        x = x.long().to(next(self.parameters()).device)
+
+        if y is not None:
+            y = y.long().to(x.device)
 
         z_H = None
         z_L = None
@@ -101,4 +109,31 @@ class HRM(nn.Module):
             z_H = z_H.detach()
             z_L = z_L.detach()
 
-        return logits.argmax(dim=-1)
+        loss = None
+
+        if y is not None:
+            if loss_fn is None:
+                loss_fn = nn.CrossEntropyLoss(ignore_index=-100)
+
+            x_flat = x.reshape(-1)
+            y_flat = y.reshape(-1)
+
+            mask = x_flat != y_flat
+            targets = y_flat.clone()
+            targets[~mask] = -100
+
+            pred = logits.reshape(-1, logits.size(-1))
+            loss = loss_fn(pred, targets)
+
+        return logits, loss
+    
+    @torch.no_grad()
+    def predict(self, x: torch.Tensor, M=None):
+        logits, _ = self.forward(x, M=M)
+        x = x.long().to(logits.device)
+
+        if x.dim() == 1:
+            x = x.unsqueeze(0)
+
+        pred = logits.argmax(dim=-1)
+        return torch.where(x != 0, x, pred)

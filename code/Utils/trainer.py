@@ -12,7 +12,7 @@ from Utils.step_validation import small_validation_loss
 
 
 @torch.no_grad()
-def evaluate_hrm(model, val_loader, loss_fn, device):
+def evaluate_standard_model(model, val_loader, device):
     model.eval()
 
     total_loss = 0.0
@@ -22,7 +22,7 @@ def evaluate_hrm(model, val_loader, loss_fn, device):
         x = x.to(device)
         y = y.to(device)
 
-        logits, loss = model(x, y, loss_fn=loss_fn)
+        logits, loss = model(x, y)
 
         total_loss += loss.item()
 
@@ -34,12 +34,13 @@ def evaluate_hrm(model, val_loader, loss_fn, device):
 
     return avg_loss, token_acc, board_acc
 
-def train_hrm_deepsup(
+
+def train_standard_model(
     model,
     train_loader,
     optimizer,
-    loss_fn,
     device,
+    model_name: str,
     scheduler=None,
     num_epochs=10,
     checkpoint_dir="checkpoints",
@@ -48,8 +49,9 @@ def train_hrm_deepsup(
     val_loader=None,
     start_epoch=0,
     best_metric=0.0,
+    grad_clip=None,
     step_val_batches=1,
-    step_val_every=100,
+    step_val_every=25,
 ):
     print(
         "Number of trainable parameters:",
@@ -75,71 +77,50 @@ def train_hrm_deepsup(
             x = x.to(device)
             y = y.to(device)
 
-            z_H = None
-            z_L = None
+            optimizer.zero_grad(set_to_none=True)
 
-            batch_loss = 0.0
-            last_logits = None
+            logits, loss = model(x, y)
+            loss.backward()
 
-            x_flat = x.reshape(-1)
-            y_flat = y.reshape(-1)
+            if grad_clip is not None:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
 
-            mask = x_flat != y_flat
-            targets = y_flat.clone()
-            targets[~mask] = -100
+            optimizer.step()
 
-            for _ in range(model.M):
-                optimizer.zero_grad(set_to_none=True)
+            if scheduler is not None:
+                scheduler.step()
 
-                z_H, z_L, logits = model.segment(x, z_H, z_L)
+            train_loss_value = loss.item()
+            epoch_loss += train_loss_value
 
-                pred = logits.reshape(-1, logits.size(-1))
-                loss = loss_fn(pred, targets)
+            batch_metrics = sudoku_metrics_from_logits(x, y, logits.detach())
+            add_sudoku_metrics(metrics, batch_metrics)
 
-                loss.backward()
-                optimizer.step()
+            val_loss_value = None
 
-                if scheduler is not None:
-                    scheduler.step()
+            should_step_validate = (
+                val_loader is not None
+                and step_val_batches is not None
+                and step_val_batches > 0
+                and step_val_every is not None
+                and step_val_every > 0
+                and global_step % step_val_every == 0
+            )
 
-                train_loss_value = loss.item()
-
-                val_loss_value = None
-
-                should_step_validate = (
-                    val_loader is not None
-                    and step_val_batches is not None
-                    and step_val_batches > 0
-                    and step_val_every is not None
-                    and step_val_every > 0
-                    and global_step % step_val_every == 0
+            if should_step_validate:
+                val_loss_value = small_validation_loss(
+                    model,
+                    val_loader,
+                    device,
+                    max_batches=step_val_batches,
                 )
 
-                if should_step_validate:
-                    val_loss_value = small_validation_loss(
-                        model,
-                        val_loader,
-                        device,
-                        max_batches=step_val_batches,
-                    )
+            history["step"].append(global_step)
+            history["epoch"].append(epoch + 1)
+            history["train_loss"].append(train_loss_value)
+            history["val_loss"].append(val_loss_value)
 
-                history["step"].append(global_step)
-                history["epoch"].append(epoch + 1)
-                history["train_loss"].append(train_loss_value)
-                history["val_loss"].append(val_loss_value)
-
-                global_step += 1
-
-                z_H = z_H.detach()
-                z_L = z_L.detach()
-
-                batch_loss += train_loss_value
-                last_logits = logits.detach()
-
-            epoch_loss += batch_loss / model.M
-
-            batch_metrics = sudoku_metrics_from_logits(x, y, last_logits)
-            add_sudoku_metrics(metrics, batch_metrics)
+            global_step += 1
 
         avg_loss = epoch_loss / len(train_loader)
         token_acc, board_acc = sudoku_metric_accuracies(metrics)
@@ -164,10 +145,9 @@ def train_hrm_deepsup(
         )
 
         if should_validate:
-            val_loss, val_token_acc, val_board_acc = evaluate_hrm(
+            val_loss, val_token_acc, val_board_acc = evaluate_standard_model(
                 model,
                 val_loader,
-                loss_fn,
                 device,
             )
 
@@ -184,7 +164,7 @@ def train_hrm_deepsup(
             optimizer,
             scheduler,
             epoch,
-            f"{checkpoint_dir}/hrm_last.pt",
+            f"{checkpoint_dir}/{model_name}_last.pt",
             best_board_acc=best_metric,
         )
 
@@ -196,7 +176,7 @@ def train_hrm_deepsup(
                 optimizer,
                 scheduler,
                 epoch,
-                f"{checkpoint_dir}/hrm_best.pt",
+                f"{checkpoint_dir}/{model_name}_best.pt",
                 best_board_acc=best_metric,
             )
 
@@ -206,7 +186,7 @@ def train_hrm_deepsup(
                 optimizer,
                 scheduler,
                 epoch,
-                f"{checkpoint_dir}/hrm_epoch_{epoch + 1}.pt",
+                f"{checkpoint_dir}/{model_name}_epoch_{epoch + 1}.pt",
                 best_board_acc=best_metric,
             )
 
