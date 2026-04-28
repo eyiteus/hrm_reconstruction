@@ -77,9 +77,8 @@ def train_hrm_deepsup(
 
             z_H = None
             z_L = None
-
-            batch_loss = 0.0
             last_logits = None
+            final_loss_value = None
 
             x_flat = x.reshape(-1)
             y_flat = y.reshape(-1)
@@ -88,7 +87,7 @@ def train_hrm_deepsup(
             targets = y_flat.clone()
             targets[~mask] = -100
 
-            for _ in range(model.M):
+            for segment_idx in range(model.M):
                 optimizer.zero_grad(set_to_none=True)
 
                 z_H, z_L, logits = model.segment(x, z_H, z_L)
@@ -102,41 +101,40 @@ def train_hrm_deepsup(
                 if scheduler is not None:
                     scheduler.step()
 
-                train_loss_value = loss.item()
-
-                val_loss_value = None
-
-                should_step_validate = (
-                    val_loader is not None
-                    and step_val_batches is not None
-                    and step_val_batches > 0
-                    and step_val_every is not None
-                    and step_val_every > 0
-                    and global_step % step_val_every == 0
-                )
-
-                if should_step_validate:
-                    val_loss_value = small_validation_loss(
-                        model,
-                        val_loader,
-                        device,
-                        max_batches=step_val_batches,
-                    )
-
-                history["step"].append(global_step)
-                history["epoch"].append(epoch + 1)
-                history["train_loss"].append(train_loss_value)
-                history["val_loss"].append(val_loss_value)
-
-                global_step += 1
+                if segment_idx == model.M - 1:
+                    final_loss_value = loss.item()
+                    last_logits = logits.detach()
 
                 z_H = z_H.detach()
                 z_L = z_L.detach()
 
-                batch_loss += train_loss_value
-                last_logits = logits.detach()
+                global_step += 1
 
-            epoch_loss += batch_loss / model.M
+            val_loss_value = None
+
+            should_step_validate = (
+                val_loader is not None
+                and step_val_batches is not None
+                and step_val_batches > 0
+                and step_val_every is not None
+                and step_val_every > 0
+                and global_step % step_val_every == 0
+            )
+
+            if should_step_validate:
+                val_loss_value = small_validation_loss(
+                    model,
+                    val_loader,
+                    device,
+                    max_batches=step_val_batches,
+                )
+
+            history["step"].append(global_step)
+            history["epoch"].append(epoch + 1)
+            history["train_loss"].append(final_loss_value)
+            history["val_loss"].append(val_loss_value)
+
+            epoch_loss += final_loss_value
 
             batch_metrics = sudoku_metrics_from_logits(x, y, last_logits)
             add_sudoku_metrics(metrics, batch_metrics)
@@ -147,7 +145,7 @@ def train_hrm_deepsup(
 
         print(
             f"Epoch {epoch + 1}: "
-            f"Avg Train Loss = {avg_loss:.4f}, "
+            f"Avg Train Final Loss = {avg_loss:.4f}, "
             f"Train Token Accuracy = {token_acc * 100:.2f}%, "
             f"Train Board Accuracy = {board_acc * 100:.2f}%, "
             f"LR = {current_lr:.2e}"

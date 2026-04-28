@@ -9,7 +9,7 @@ import torch.nn.functional as F
 class BiLSTMConfig:
     vocab_size: int = 10
     num_classes: int = 10
-    embedding_dim: int = 256
+    embedding_dim: int = 512
     hidden_size: int = 560
     num_layers: int = 5
     dropout: float = 0.10

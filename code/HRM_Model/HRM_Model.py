@@ -87,7 +87,8 @@ class HRM(nn.Module):
 
         return self.step(z_H, z_L, x_embed)
 
-    
+    # not used in training loop, preferred to use segment there
+    # for readability and to match pseudocode in paper
     def forward(self, x: torch.Tensor, y: torch.Tensor = None, loss_fn=None, M=None):
         if M is None:
             M = self.M
@@ -112,6 +113,7 @@ class HRM(nn.Module):
         loss = None
 
         if y is not None:
+            # Loss just for logging here, not for deep supervision
             if loss_fn is None:
                 loss_fn = nn.CrossEntropyLoss(ignore_index=-100)
 
