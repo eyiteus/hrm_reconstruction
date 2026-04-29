@@ -9,3 +9,4 @@ Github_Repo.ipynb
 *.DS_Store
 __init__.cpython-312.pyc
 *.pt
+*__pycache__/
