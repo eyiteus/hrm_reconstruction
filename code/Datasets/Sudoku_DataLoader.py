@@ -100,6 +100,6 @@ def collect_puzzles_set(loader):
 
     for _, (x, _) in enumerate(loader):
         for xi in x:
-           puzzles.add(xi.cpu())
+           puzzles.add(xi.cpu().numpy().tobytes())
 
     return puzzles
