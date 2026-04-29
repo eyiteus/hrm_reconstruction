@@ -8,4 +8,4 @@ from .metrics import (
 from .schedules import cosine_schedule_with_warmup_lr_lambda
 from .step_validation import small_validation_loss
 from .trainer import evaluate_standard_model, train_standard_model
-from .visualization import show_sudoku_predictions
+from .visualization import show_sudoku_predictions, print_sudoku_comparison

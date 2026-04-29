@@ -1,1 +1,1 @@
-from .Sudoku_DataLoader import get_loaders
+from .Sudoku_DataLoader import get_loaders, collect_puzzles_set

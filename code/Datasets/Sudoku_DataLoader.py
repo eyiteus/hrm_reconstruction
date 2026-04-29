@@ -95,3 +95,11 @@ def get_loaders(train_size=1000, test_size=200, batch_size=64):
 
     return train_loader, test_loader
 
+def collect_puzzles_set(loader):
+    puzzles = set()
+
+    for _, (x, _) in enumerate(loader):
+        for xi in x:
+           puzzles.add(xi.cpu())
+
+    return puzzles
