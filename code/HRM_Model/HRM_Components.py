@@ -208,3 +208,13 @@ class Head(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.linear(x)
+
+
+class QHead(nn.Module):
+    def __init__(self, d_model: int = 256):
+        super().__init__()
+        self.linear = nn.Linear(d_model, 2, bias=False)
+
+    def forward(self, z_H: torch.Tensor) -> torch.Tensor:
+        pooled = z_H.mean(dim=1)
+        return torch.sigmoid(self.linear(pooled))

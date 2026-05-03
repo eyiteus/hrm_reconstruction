@@ -139,3 +139,91 @@ class HRM(nn.Module):
 
         pred = logits.argmax(dim=-1)
         return torch.where(x != 0, x, pred)
+
+
+class HRM_ACT(HRM):
+    def __init__(
+        self,
+        L_module: nn.Module,
+        H_module: nn.Module,
+        encoder: nn.Module,
+        head: nn.Module,
+        q_head: nn.Module,
+        M: int,
+        N: int,
+        T: int,
+        max_len: int = 81,
+        d_model: int = 256,
+        epsilon: float = 0.1,
+    ):
+        super().__init__(L_module, H_module, encoder, head, M, N, T, max_len, d_model)
+
+        self.q_head = q_head
+        self.epsilon = epsilon
+
+    def step_act(
+        self,
+        z_H: torch.Tensor,
+        z_L: torch.Tensor,
+        x_embed: torch.Tensor,
+    ):
+        z_H, z_L, logits = self.step(z_H, z_L, x_embed)
+        q = self.q_head(z_H)
+        return z_H, z_L, logits, q
+
+    def segment_act(self, x: torch.Tensor, z_H=None, z_L=None):
+        if x.dim() == 1:
+            x = x.unsqueeze(0)
+
+        x = x.long().to(next(self.parameters()).device)
+        x_embed = self.encode(x)
+
+        if z_H is None or z_L is None:
+            z_H, z_L = self.init_states(x_embed)
+
+        return self.step_act(z_H, z_L, x_embed)
+
+    def sample_m_min(self, batch_size: int, device: torch.device) -> torch.Tensor:
+        explore = torch.rand(batch_size, device=device) < self.epsilon
+        explored = torch.randint(2, self.M + 1, (batch_size,), device=device)
+        return torch.where(explore, explored, torch.ones_like(explored))
+
+    @torch.no_grad()
+    def predict_act(self, x: torch.Tensor, M_max=None):
+        if M_max is None:
+            M_max = self.M
+
+        if x.dim() == 1:
+            x = x.unsqueeze(0)
+
+        x = x.long().to(next(self.parameters()).device)
+
+        B, L = x.shape
+        vocab = self.head.linear.out_features
+        device = x.device
+
+        halted = torch.zeros(B, dtype=torch.bool, device=device)
+        m_used = torch.zeros(B, dtype=torch.long, device=device)
+        final_logits = torch.zeros(B, L, vocab, device=device)
+
+        z_H, z_L = None, None
+
+        for step_idx in range(M_max):
+            z_H, z_L, logits, q = self.segment_act(x, z_H, z_L)
+
+            is_last = step_idx == M_max - 1
+            halt_now = ((q[:, 0] > q[:, 1]) | is_last) & (~halted)
+
+            mask = halt_now.view(-1, 1, 1)
+            final_logits = torch.where(mask, logits, final_logits)
+
+            m_used = torch.where(halted, m_used, m_used + 1)
+            halted = halted | halt_now
+
+            if halted.all():
+                break
+
+        pred = final_logits.argmax(dim=-1)
+        filled = torch.where(x != 0, x, pred)
+
+        return filled, m_used
