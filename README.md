@@ -59,7 +59,7 @@ Notebooks to run include
 | Model / Setting     |             Result | Takeaway                                |
 | ------------------- | -----------------: | --------------------------------------- |
 | Paper HRM, M=8      | ~99.10% token acc. | Original Sudoku benchmark               |
-| Our HRM, M=16, T=1  |  92.12% token acc. | Smaller-scale reproduction              |
+| Our HRM, M=16, T=2  |  92.12% token acc. | Smaller-scale reproduction              |
 | Our HRM, M=128, T=8 |  98.04% token acc. | Longer inference closes most of the gap |
 
 HRM generalized better than the BiLSTM and encoder-only transformer baselines, which overfit at the same dataset size and converged slowly even with 8× more data. Hidden-state residuals also dropped after solution convergence, suggesting possible fixed-point-style stopping criteria beyond ACT.
