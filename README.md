@@ -29,11 +29,9 @@ HRM was implemented with shared recurrent **L-module** and **H-module** transfor
 ```bash
 git clone https://github.com/Eyiteus/HRM_Reconstruction.git
 cd HRM_Reconstruction
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
 ```
 
-Then run the HRM or baseline notebooks under `code/`. A GPU is strongly recommended.
+Then run the HRM or baseline notebooks under `code/`. You may need to download some python libraries. A GPU is strongly recommended.
 
 ## Results/Insights
 
