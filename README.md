@@ -12,6 +12,8 @@ This repository attempts to re-implement HRM, a latent-space recurrent reasoning
 
 We targeted the paper’s Sudoku benchmark, where HRM reports about **99.10% token accuracy at M = 8**. Sudoku was chosen because it is deterministic, structured, and strongly highlights HRM’s reasoning advantage over standard baselines.
 
+There were also a few open questions and unjustified claims we wanted to address. In particular, we wanted to empirically show the local fixed-point contraction (an assumption barely justified in the paper), and determine if model size can be increased after training (implied by the architecture but not mentioned in the paper).
+
 ## GitHub Contents
 
 ```text
