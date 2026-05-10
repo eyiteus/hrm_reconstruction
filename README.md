@@ -26,7 +26,7 @@ report/    Final written report PDF
 
 ## Re-implementation Details
 
-We re-implemented HRM as a recurrent latent-space model with shared L-module and H-module transformer blocks: each segment runs repeated low-level updates, periodic high-level updates, then applies a prediction head to the final latent state.
+We re-implemented HRM as a recurrent latent-space model with shared L-module and H-module transformer blocks: each segment runs repeated low-level updates, periodic high-level updates, then can apply a prediction head to the final latent state.
 
 We trained on 2^18 Sudoku examples instead of the paper’s 3M-example dataset due to compute constraints, using cross-entropy loss only on unhinted board positions and evaluating with token accuracy and full-board accuracy.
 
