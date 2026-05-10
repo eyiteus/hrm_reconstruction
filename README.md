@@ -34,6 +34,12 @@ Our main implementation differences from the paper were using AdamW, adding drop
 
 ## Reproduction Steps
 
+To re-implement our re-implementation from scratch, first build a Sudoku dataloader that returns the puzzle input, solved board labels, and a mask for unhinted cells; train with cross-entropy only on masked positions and report token plus full-board accuracy.
+
+Next implement HRM with shared recurrent L and H transformer modules and freeze the best trained base HRM and train an ACT Q-head for halting decisions. Finally, reproduce our comparisons by training a similarly sized Bidirectional LSTM and encoder-only transformer on the same data, optimizer, dropout, and evaluation pipeline.
+
+If you don't want to do all that, just clone our repo:
+
 ```bash
 git clone https://github.com/Eyiteus/HRM_Reconstruction.git
 cd HRM_Reconstruction
