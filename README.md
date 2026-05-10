@@ -49,6 +49,11 @@ cd HRM_Reconstruction
 
 Then run the HRM or baseline notebooks under `code/`. You may need to download some python libraries. A GPU is strongly recommended.
 
+Notebooks to run include
+- `code/HRM_Model/HRM.ipynb`
+- `code/BERT_Model/BERT_Sudoku.ipynb`
+- `code/BiLSTM_Model/BiLSTM_Sudoku.ipynb`
+
 ## Results/Insights
 
 | Model / Setting     |             Result | Takeaway                                |
