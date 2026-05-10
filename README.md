@@ -24,7 +24,13 @@ report/    Final written report PDF
 
 ## Re-implementation Details
 
-HRM was implemented with shared recurrent **L-module** and **H-module** transformer blocks, deep supervision at each segment, and one-step gradient approximation. We trained on a practical subset of the Sudoku dataset with ~33.6M parameters, 20% dropout, LR 1e-4 with warmup/cosine decay, and evaluated token accuracy plus full-board accuracy.
+We re-implemented HRM as a recurrent latent-space model with shared L-module and H-module transformer blocks: each segment runs repeated low-level updates, periodic high-level updates, then applies a prediction head to the final latent state.
+
+We trained on 2^18 Sudoku examples instead of the paper’s 3M-example dataset due to compute constraints, using cross-entropy loss only on unhinted board positions and evaluating with token accuracy and full-board accuracy.
+
+We also implemented Adaptive Computation Time (ACT) using a learned Q-head for halting decisions, but trained the ACT Q-head after the base HRM was already trained rather than jointly training it with the main model as in the paper.
+
+Our main implementation differences from the paper were using AdamW, adding dropout, and running smaller-scale training. For comparison, we also trained a Bidirectional LSTM and an encoder-only transformer on the same dataset with the same optimizer/dropout setup, tuned to approximately match HRM’s parameter count; unlike the paper’s large-LLM comparisons, these baselines tested similarly sized non-HRM architectures directly.
 
 ## Reproduction Steps
 
