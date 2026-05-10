@@ -6,6 +6,8 @@ A re-implementation of the **Hierarchical Reasoning Model (HRM)** for Sudoku rea
 
 This repository attempts to re-implement HRM, a latent-space recurrent reasoning architecture that uses fast low-level and slower high-level transformer modules instead of chain-of-thought decoding.
 
+<img width="1007" height="433" alt="Screenshot 2026-05-10 at 10 21 27 AM" src="https://github.com/user-attachments/assets/f6c28ea1-7bf6-4ae3-b038-2ac1846391b1" />
+
 ## Chosen Result
 
 We targeted the paper’s Sudoku benchmark, where HRM reports about **99.10% token accuracy at M = 8**. Sudoku was chosen because it is deterministic, structured, and strongly highlights HRM’s reasoning advantage over standard baselines.
