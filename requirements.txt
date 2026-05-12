@@ -1,1 +1,6 @@
-# TODO
+datasets
+google-colab
+huggingface-hub
+matplotlib
+torch
+tqdm
