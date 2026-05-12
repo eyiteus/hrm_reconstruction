@@ -45,9 +45,10 @@ If you don't want to do all that, just clone our repo:
 ```bash
 git clone https://github.com/Eyiteus/HRM_Reconstruction.git
 cd HRM_Reconstruction
+pip install requirements.txt
 ```
 
-Then run the HRM or baseline notebooks under `code/`. You may need to download some python libraries. A GPU is strongly recommended.
+Then run the HRM or baseline notebooks under `code/`. A GPU is strongly recommended.
 
 Notebooks to run include
 - `code/HRM_Model/HRM.ipynb`
