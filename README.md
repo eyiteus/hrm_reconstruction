@@ -36,9 +36,11 @@ Our main implementation differences from the paper were using AdamW, adding drop
 
 ## Reproduction Steps
 
-To re-implement our re-implementation from scratch, first build a Sudoku dataloader that returns the puzzle input, solved board labels, and a mask for unhinted cells; train with cross-entropy only on masked positions and report token plus full-board accuracy.
+To re-implement our re-implementation from scratch, first build a Sudoku dataloader that returns the puzzle input, solved board labels, and a mask for unhinted cells. For a specific dataset, we used HRM-checkpoint-sudoku-extreme from huggingface (more information can be found in `data/README.md`). Train with cross-entropy loss only on masked positions and report token plus full-board accuracy.
 
 Next implement HRM with shared recurrent L and H transformer modules and freeze the best trained base HRM and train an ACT Q-head for halting decisions. Finally, reproduce our comparisons by training a similarly sized Bidirectional LSTM and encoder-only transformer on the same data, optimizer, dropout, and evaluation pipeline.
+
+For more information, please read our report-- we can't write it all here!
 
 If you don't want to do all that, just clone our repo:
 
@@ -48,7 +50,7 @@ cd HRM_Reconstruction
 pip install requirements.txt
 ```
 
-Then run the HRM or baseline notebooks under `code/`. A GPU is strongly recommended.
+The `requirements.txt` lists all libraries necessary to run the project. Run the HRM or baseline notebooks under `code/`. A GPU is strongly recommended.
 
 Notebooks to run include
 - `code/HRM_Model/HRM.ipynb`
@@ -71,9 +73,13 @@ Our re-implementation supports HRM’s main claim: latent recurrent reasoning is
 
 ## References
 
-* Wang, G. et al. *Hierarchical Reasoning Model*. arXiv:2506.21734.
-* D. Kahneman, Thinking, Fast and Slow (2011).
-* PyTorch, Hugging Face, NumPy, Matplotlib.
+* Wang et al., arXiv:2506.21734 (2025), 
+* D. Kahneman, Thinking, Fast and Slow (2011), 
+* Sapient Intelligence, HRM-checkpoint-sudoku-extreme, Hugging Face (2025),
+* Paszke et al., arXiv:1912.01703 (2019), 
+* Hunter, Matplotlib: A 2D Graphics Environment (2007),
+* da Costa-Luis, tqdm: A Fast, Extensible Progress Meter for Python and CLI (2019),
+* Python Software Foundation, Python 3.13 Documentation (2024).
 
 ## Acknowledgements
 
