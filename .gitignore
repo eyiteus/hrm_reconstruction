@@ -10,5 +10,6 @@ Github_Repo.ipynb
 __init__.cpython-312.pyc
 *.pt
 *__pycache__/
+.claude/
 code/HRM_Model/hrm_residual_analysis.py
 code/HRM_Model/HRM(fixed_point_check).ipynb
