@@ -79,6 +79,8 @@ Our re-implementation supports HRM’s main claim: latent recurrent reasoning is
 * Paszke et al., arXiv:1912.01703 (2019), 
 * Hunter, Matplotlib: A 2D Graphics Environment (2007),
 * da Costa-Luis, tqdm: A Fast, Extensible Progress Meter for Python and CLI (2019),
+* Lhoest et al., Datasets: A Community Library for Natural Language Processing (2021),
+* Hugging Face, huggingface-hub (2026),
 * Python Software Foundation, Python 3.13 Documentation (2024).
 
 ## Acknowledgements
