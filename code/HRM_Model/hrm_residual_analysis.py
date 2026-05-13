@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
-import numpy as np
 
 
 # Core recording logic
@@ -109,14 +108,14 @@ def plot_residuals(
         model, x, y=y, device=device
     )
 
-    zL = np.array(data["zL_residuals"])
-    zH = np.array(data["zH_residuals"])
-    zH_steps = np.array(data["zH_at_step"])
+    zL = torch.tensor(data["zL_residuals"])
+    zH = torch.tensor(data["zH_residuals"])
+    zH_steps = torch.tensor(data["zH_at_step"])
     seg_bds = data["seg_boundaries"]
     seg_accs = data["seg_accuracies"]
 
     total_L = len(zL)
-    steps = np.arange(1, total_L + 1)
+    steps = torch.arange(1, total_L + 1)
 
 
     _, (ax, ax2) = plt.subplots(
@@ -156,7 +155,7 @@ def plot_residuals(
     ax.legend()
 
     #Accuracy (bar chart)
-    seg_nums = np.arange(1, len(seg_accs) + 1)
+    seg_nums = torch.arange(1, len(seg_accs) + 1)
 
     bars = ax2.bar(
         seg_nums,
@@ -169,7 +168,7 @@ def plot_residuals(
 
     # Add value labels
     for bar, acc in zip(bars, seg_accs):
-        if not np.isnan(acc):
+        if not torch.isnan(torch.tensor(acc)):
             ax2.text(
                 bar.get_x() + bar.get_width() / 2,
                 acc + 0.01,
